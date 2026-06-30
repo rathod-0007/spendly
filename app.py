@@ -1,13 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, session, g, abort
+import sqlite3
+from flask import Flask, render_template, request, redirect, url_for, session, g, abort, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import functools
 from datetime import date
 
 # Import from your database structure
-from database.db import get_db, init_db, seed_db
+from database.db import get_db, init_db, seed_db, create_user
 
 app = Flask(__name__)
-app.secret_key = "spendly_secret_key_change_in_production"
+app.secret_key = "dev-secret-key"
 
 # ------------------------------------------------------------------ #
 # Authentication Helpers                                             #
@@ -51,29 +52,32 @@ def register():
         name = request.form.get("name")
         email = request.form.get("email")
         password = request.form.get("password")
-        error = None
+        confirm_password = request.form.get("confirm_password")
 
-        if not name or not email or not password:
-            error = "All fields are required."
-        elif len(password) < 8:
-            error = "Password must be at least 8 characters long."
+        # 1. Validation: Ensure all fields are non-empty
+        if not name or not email or not password or not confirm_password:
+            flash("All fields are required.", "error")
+            return render_template("register.html")
+            
+        # 2. Validation: Ensure password matches confirm password
+        if password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return render_template("register.html")
+            
+        # 3. Validation: Password length requirement
+        if len(password) < 8:
+            flash("Password must be at least 8 characters long.", "error")
+            return render_template("register.html")
 
-        if error is None:
-            db = get_db()
-            try:
-                hashed_pw = generate_password_hash(password)
-                db.execute(
-                    "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-                    (name, email, hashed_pw)
-                )
-                db.commit()
-                return redirect(url_for("login"))
-            except db.IntegrityError:
-                error = f"Email {email} is already registered."
-            finally:
-                db.close()
-
-        return render_template("register.html", error=error)
+        # 4. Attempt database insertion
+        try:
+            create_user(name, email, password)
+            flash("Registration successful! Please sign in.", "success")
+            return redirect(url_for("login"))
+        except sqlite3.IntegrityError:
+            # Catch duplicate email UNIQUE constraint violation
+            flash("Email already registered.", "error")
+            return render_template("register.html")
 
     return render_template("register.html")
 
@@ -116,71 +120,24 @@ def logout():
 def dashboard():
     db = get_db()
     
-    # Capture optional dashboard filters from query arguments
-    category = request.args.get("category", "")
-    start_date = request.args.get("start_date", "")
-    end_date = request.args.get("end_date", "")
-    search = request.args.get("search", "")
+    # Fetch all expenses for current user
+    expenses = db.execute(
+        "SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC, id DESC",
+        (g.user["id"],)
+    ).fetchall()
     
-    # 1. Fetch expenses dynamically applying parameterized filters
-    query = "SELECT * FROM expenses WHERE user_id = ?"
-    params = [g.user["id"]]
-    
-    if category:
-        query += " AND category = ?"
-        params.append(category)
-    if start_date:
-        query += " AND date >= ?"
-        params.append(start_date)
-    if end_date:
-        query += " AND date <= ?"
-        params.append(end_date)
-    if search:
-        query += " AND description LIKE ?"
-        params.append(f"%{search}%")
-        
-    query += " ORDER BY date DESC, id DESC"
-    expenses = db.execute(query, params).fetchall()
-    
-    # 2. Calculate dynamic sum of filtered expenses
-    sum_query = "SELECT SUM(amount) as total FROM expenses WHERE user_id = ?"
-    sum_params = [g.user["id"]]
-    
-    if category:
-        sum_query += " AND category = ?"
-        sum_params.append(category)
-    if start_date:
-        sum_query += " AND date >= ?"
-        sum_params.append(start_date)
-    if end_date:
-        sum_query += " AND date <= ?"
-        sum_params.append(end_date)
-    if search:
-        sum_query += " AND description LIKE ?"
-        sum_params.append(f"%{search}%")
-        
-    total_row = db.execute(sum_query, sum_params).fetchone()
+    # Calculate sum of all expenses
+    total_row = db.execute(
+        "SELECT SUM(amount) as total FROM expenses WHERE user_id = ?",
+        (g.user["id"],)
+    ).fetchone()
     total_spending = total_row["total"] if total_row["total"] is not None else 0.0
     
-    # 3. Calculate category totals dynamically for the filtered set
-    cat_query = "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ?"
-    cat_params = [g.user["id"]]
-    
-    if category:
-        cat_query += " AND category = ?"
-        cat_params.append(category)
-    if start_date:
-        cat_query += " AND date >= ?"
-        cat_params.append(start_date)
-    if end_date:
-        cat_query += " AND date <= ?"
-        cat_params.append(end_date)
-    if search:
-        cat_query += " AND description LIKE ?"
-        cat_params.append(f"%{search}%")
-        
-    cat_query += " GROUP BY category ORDER BY total DESC"
-    category_rows = db.execute(cat_query, cat_params).fetchall()
+    # Calculate spending grouped by category
+    category_rows = db.execute(
+        "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? GROUP BY category ORDER BY total DESC",
+        (g.user["id"],)
+    ).fetchall()
     
     category_totals = {row["category"]: row["total"] for row in category_rows}
     db.close()
@@ -189,12 +146,7 @@ def dashboard():
         "dashboard.html",
         expenses=expenses,
         total_spending=total_spending,
-        category_totals=category_totals,
-        # Return filter parameters to populate inputs in HTML
-        active_category=category,
-        active_start_date=start_date,
-        active_end_date=end_date,
-        active_search=search
+        category_totals=category_totals
     )
 
 
