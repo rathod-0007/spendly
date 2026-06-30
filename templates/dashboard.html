@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Spendly{% endblock %}
+
+{% block head %}
+<style>
+    /* Responsive grid structure for dashboard layout */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        align-items: start;
+        max-width: var(--max-width);
+        margin: 0 auto;
+        padding: 0 2rem 4rem;
+    }
+
+    @media (min-width: 768px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr 2fr;
+        }
+    }
+
+    /* Prevent tables from breaking layouts on small viewports */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding: 3rem 2rem 2rem; grid-template-columns: 1fr; max-width: var(--max-width); margin: 0 auto; gap: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <span class="hero-badge" style="margin-bottom: 0.5rem;">Overview</span>
+            <h1 class="hero-title" style="font-size: 2.5rem; margin-bottom: 0.5rem;">
+                Namaste, <em>{{ g.user['name'] }}</em>
+            </h1>
+            <p class="hero-subtitle" style="margin-bottom: 0;">Here is your spending analysis.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('add_expense') }}" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                <span>+</span> Add Expense
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Scoped responsive container replacing the desktop-only features section -->
+<div class="dashboard-grid">
+    
+    <!-- Left Column: Spending Breakdown Card -->
+    <div class="mock-card" style="max-width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+        <div class="mock-card-header">
+            <span class="mock-label">All-time Spending</span>
+            <span class="mock-total">₹{{ "%.2f"|format(total_spending) }}</span>
+        </div>
+        
+        <div class="mock-bars">
+            {% if category_totals %}
+                {% for cat, amt in category_totals.items() %}
+                    {% set percentage = (amt / total_spending * 100) if total_spending > 0 else 0 %}
+                    <!-- Pick a distinct bar style loop based on loop index -->
+                    {% set bar_class = "" %}
+                    {% if loop.index0 % 4 == 1 %}{% set bar_class = "mock-bar-2" %}
+                    {% elif loop.index0 % 4 == 2 %}{% set bar_class = "mock-bar-3" %}
+                    {% elif loop.index0 % 4 == 3 %}{% set bar_class = "mock-bar-4" %}
+                    {% endif %}
+                    
+                    <div class="mock-bar-row">
+                        <span class="mock-cat">{{ cat }}</span>
+                        <div class="mock-bar-track">
+                            <div class="mock-bar {{ bar_class }}" style="width: {{ percentage }}%"></div>
+                        </div>
+                        <span class="mock-amt">₹{{ "%.0f"|format(amt) }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="font-size: 0.9rem; color: var(--ink-muted); text-align: center; padding: 1rem 0;">
+                    No spending recorded yet.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right Column: Recent Expenses Table List -->
+    <div style="background: var(--paper-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 2rem; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-soft); padding-bottom: 1rem;">
+            <h3 class="feature-title" style="margin-bottom: 0;">Recent Transactions</h3>
+            <span class="mock-label">{{ expenses|length }} recorded</span>
+        </div>
+
+        {% if expenses %}
+            <div class="table-container">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border); color: var(--ink-soft); font-weight: 600;">
+                            <th style="padding: 0.75rem 0.5rem;">Date</th>
+                            <th style="padding: 0.75rem 0.5rem;">Category</th>
+                            <th style="padding: 0.75rem 0.5rem;">Description</th>
+                            <th style="padding: 0.75rem 0.5rem; text-align: right;">Amount</th>
+                            <th style="padding: 0.75rem 0.5rem; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for expense in expenses %}
+                            <tr style="border-bottom: 1px solid var(--border-soft); transition: background 0.2s;">
+                                <td style="padding: 1rem 0.5rem; color: var(--ink-muted); white-space: nowrap;">{{ expense['date'] }}</td>
+                                <td style="padding: 1rem 0.5rem; font-weight: 500;">
+                                    <span class="hero-badge" style="margin-bottom: 0; padding: 0.2rem 0.6rem; font-size: 0.7rem;">
+                                        {{ expense['category'] }}
+                                    </span>
+                                </td>
+                                <td style="padding: 1rem 0.5rem; color: var(--ink-soft);">{{ expense['description'] or '-' }}</td>
+                                <td style="padding: 1rem 0.5rem; text-align: right; font-weight: 600; color: var(--ink);">₹{{ "%.2f"|format(expense['amount']) }}</td>
+                                <td style="padding: 1rem 0.5rem; text-align: center; white-space: nowrap;">
+                                    <a href="{{ url_for('edit_expense', id=expense['id']) }}" style="color: var(--accent); margin-right: 0.75rem; font-weight: 500;">Edit</a>
+                                    <a href="{{ url_for('delete_expense', id=expense['id']) }}" style="color: var(--danger); font-weight: 500;" class="delete-link">Delete</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3rem 1rem; color: var(--ink-muted);">
+                <p style="font-size: 1rem; margin-bottom: 1rem;">You haven't logged any expenses yet.</p>
+                <a href="{{ url_for('add_expense') }}" class="btn-ghost" style="padding: 0.5rem 1rem;">Add your first expense</a>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
