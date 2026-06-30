@@ -4,64 +4,95 @@
 
 {% block content %}
 
-<section class="hero">
-    <div class="hero-inner">
-        <div class="hero-badge">Personal Finance Tracker</div>
-        <h1 class="hero-title">
-            Know where your<br>
-            <em>money goes</em>
+<!-- Centered Redesigned Hero Section -->
+<section class="hero" style="grid-template-columns: 1fr; text-align: center; max-width: 800px; padding: 4rem 1.5rem 3rem;">
+    <div class="hero-inner" style="display: flex; flex-direction: column; align-items: center;">
+        
+        <!-- Updated badge -->
+        <div class="hero-badge" style="background: var(--accent-light); color: var(--accent); padding: 0.45rem 1.25rem;">
+            ● Free to use · No credit card needed
+        </div>
+        
+        <!-- Updated Heading -->
+        <h1 class="hero-title" style="font-size: clamp(2.5rem, 6vw, 4.5rem); margin-bottom: 1.5rem;">
+            Track every rupee.<br>
+            <em style="color: var(--accent);">Know where it goes.</em>
         </h1>
-        <p class="hero-subtitle">
-            Log expenses, understand your spending patterns,
-            and take control of your financial life —
-            one transaction at a time.
+        
+        <!-- Updated Subtitle -->
+        <p class="hero-subtitle" style="max-width: 600px; margin-bottom: 2.5rem; font-size: 1.15rem; line-height: 1.6;">
+            Spendly helps you log expenses, spot patterns, and stay on budget — without the spreadsheet headache.
         </p>
-        <div class="hero-actions">
-            <a href="{{ url_for('register') }}" class="btn-primary">Start tracking free</a>
-            <a href="{{ url_for('login') }}" class="btn-ghost">Sign in</a>
+        
+        <!-- Actions buttons -->
+        <div class="hero-actions" style="margin-bottom: 4rem;">
+            <a href="{{ url_for('register') }}" class="btn-primary" style="padding: 0.8rem 1.8rem; font-size: 0.95rem;">
+                Create free account
+            </a>
+            <!-- Trigger button for YouTube Modal -->
+            <button id="open-video-btn" class="btn-ghost" style="padding: 0.8rem 1.8rem; font-size: 0.95rem; cursor: pointer; background: var(--ink); color: var(--paper); border: none;">
+                See how it works
+            </button>
         </div>
     </div>
-    <div class="hero-visual">
-        <div class="mock-card">
-            <div class="mock-card-header">
-                <span class="mock-label">March 2026</span>
-                <span class="mock-total">₹12,450</span>
+</section>
+
+<!-- Redesigned Mock Dashboard Visual Card -->
+<section style="display: flex; justify-content: center; padding: 0 1.5rem 5rem;">
+    <div class="mock-card" style="max-width: 680px; width: 100%; border-radius: var(--radius-lg); box-shadow: 0 10px 40px rgba(0,0,0,0.05); padding: 1.5rem;">
+        
+        <!-- Mock Browser Window Control Dots -->
+        <div style="display: flex; gap: 8px; margin-bottom: 1.5rem; padding-bottom: 0.25rem;">
+            <span style="width: 11px; height: 11px; background-color: #ff5f56; border-radius: 50%; display: inline-block;"></span>
+            <span style="width: 11px; height: 11px; background-color: #ffbd2e; border-radius: 50%; display: inline-block;"></span>
+            <span style="width: 11px; height: 11px; background-color: #27c93f; border-radius: 50%; display: inline-block;"></span>
+        </div>
+        
+        <!-- Top Metrics row -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="background: var(--paper); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 1.25rem; text-align: left;">
+                <span class="mock-label" style="font-size: 0.75rem; color: var(--ink-muted);">This month</span>
+                <p style="font-family: var(--font-display); font-size: 1.5rem; color: var(--ink); margin-top: 0.25rem;">₹18,240</p>
+                <span style="font-size: 0.75rem; color: var(--danger); font-weight: 500;">+12% vs last</span>
             </div>
-            <div class="mock-bars">
-                <div class="mock-bar-row">
-                    <span class="mock-cat">Bills</span>
-                    <div class="mock-bar-track">
-                        <div class="mock-bar" style="width: 72%"></div>
-                    </div>
-                    <span class="mock-amt">₹4,500</span>
+            <div style="background: var(--paper); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 1.25rem; text-align: left;">
+                <span class="mock-label" style="font-size: 0.75rem; color: var(--ink-muted);">Budget left</span>
+                <p style="font-family: var(--font-display); font-size: 1.5rem; color: var(--ink); margin-top: 0.25rem;">₹6,760</p>
+                <span style="font-size: 0.75rem; color: var(--accent); font-weight: 500;">43% remaining</span>
+            </div>
+            <div style="background: var(--paper); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 1.25rem; text-align: left;">
+                <span class="mock-label" style="font-size: 0.75rem; color: var(--ink-muted);">Transactions</span>
+                <p style="font-family: var(--font-display); font-size: 1.5rem; color: var(--ink); margin-top: 0.25rem;">34</p>
+                <span style="font-size: 0.75rem; color: var(--ink-faint); font-weight: 500;">this month</span>
+            </div>
+        </div>
+
+        <!-- Category Progress Bars -->
+        <div class="mock-bars" style="padding: 0.5rem 0.25rem;">
+            <div class="mock-bar-row" style="grid-template-columns: 80px 1fr 20px;">
+                <span class="mock-cat" style="font-size: 0.85rem;">Food</span>
+                <div class="mock-bar-track" style="height: 10px;">
+                    <div class="mock-bar" style="width: 72%; background: var(--accent-2);"></div>
                 </div>
-                <div class="mock-bar-row">
-                    <span class="mock-cat">Food</span>
-                    <div class="mock-bar-track">
-                        <div class="mock-bar mock-bar-2" style="width: 52%"></div>
-                    </div>
-                    <span class="mock-amt">₹3,200</span>
+            </div>
+            <div class="mock-bar-row" style="grid-template-columns: 80px 1fr 20px;">
+                <span class="mock-cat" style="font-size: 0.85rem;">Travel</span>
+                <div class="mock-bar-track" style="height: 10px;">
+                    <div class="mock-bar" style="width: 52%; background: #3b82f6;"></div>
                 </div>
-                <div class="mock-bar-row">
-                    <span class="mock-cat">Health</span>
-                    <div class="mock-bar-track">
-                        <div class="mock-bar mock-bar-3" style="width: 33%"></div>
-                    </div>
-                    <span class="mock-amt">₹2,050</span>
-                </div>
-                <div class="mock-bar-row">
-                    <span class="mock-cat">Transport</span>
-                    <div class="mock-bar-track">
-                        <div class="mock-bar mock-bar-4" style="width: 28%"></div>
-                    </div>
-                    <span class="mock-amt">₹1,800</span>
+            </div>
+            <div class="mock-bar-row" style="grid-template-columns: 80px 1fr 20px;">
+                <span class="mock-cat" style="font-size: 0.85rem;">Bills</span>
+                <div class="mock-bar-track" style="height: 10px;">
+                    <div class="mock-bar" style="width: 45%; background: #8b5cf6;"></div>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<section class="features">
+<!-- Simple CTA & Features sections remain for consistency -->
+<section class="features" style="background: var(--paper-warm);">
     <div class="features-inner">
         <div class="feature-card">
             <div class="feature-icon">₹</div>
@@ -88,5 +119,16 @@
         <a href="{{ url_for('register') }}" class="btn-primary">Create free account</a>
     </div>
 </section>
+
+<!-- Video Popup Modal Structure -->
+<div id="video-modal" class="modal-overlay">
+    <div class="modal-container">
+        <button id="close-modal-btn" class="modal-close">&times;</button>
+        <div class="video-wrapper">
+            <!-- Emitting dynamic query parameter for API support -->
+            <iframe id="video-iframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+    </div>
+</div>
 
 {% endblock %}

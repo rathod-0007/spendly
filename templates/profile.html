@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile — Spendly{% endblock %}
+
+{% block content %}
+<section class="auth-section" style="min-height: calc(100vh - 60px - 100px); padding: 3rem 1rem;">
+    <div class="auth-container" style="max-width: 500px;">
+
+        <div class="auth-header" style="margin-bottom: 2rem;">
+            <span class="hero-badge" style="margin-bottom: 0.5rem;">User Account</span>
+            <h1 class="auth-title">My Profile</h1>
+            <p class="auth-subtitle">Your personal details and transaction stats</p>
+        </div>
+
+        <div class="auth-card" style="padding: 2rem;">
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                
+                <!-- Account Info -->
+                <div style="border-bottom: 1px solid var(--border-soft); padding-bottom: 1.25rem;">
+                    <h3 class="mock-label" style="margin-bottom: 0.5rem; color: var(--accent);">Personal Details</h3>
+                    <p style="font-size: 1.1rem; font-weight: 600; color: var(--ink);">{{ g.user['name'] }}</p>
+                    <p style="font-size: 0.9rem; color: var(--ink-muted);">{{ g.user['email'] }}</p>
+                </div>
+
+                <!-- Stats summary -->
+                <div>
+                    <h3 class="mock-label" style="margin-bottom: 0.75rem; color: var(--accent);">Your Activity</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div style="background: var(--paper); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 1rem; text-align: center;">
+                            <span class="mock-label" style="font-size: 0.7rem;">Transactions</span>
+                            <p style="font-family: var(--font-display); font-size: 1.5rem; color: var(--ink); margin-top: 0.25rem;">
+                                {{ stats['count'] if stats else 0 }}
+                            </p>
+                        </div>
+                        <div style="background: var(--paper); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 1rem; text-align: center;">
+                            <span class="mock-label" style="font-size: 0.7rem;">Total Outflow</span>
+                            <p style="font-family: var(--font-display); font-size: 1.5rem; color: var(--ink); margin-top: 0.25rem;">
+                                ₹{{ "%.2f"|format(stats['total'] if stats['total'] else 0) }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div style="margin-top: 1rem;">
+                    <a href="{{ url_for('dashboard') }}" class="btn-primary" style="display: block; text-align: center; font-size: 0.9rem;">
+                        Back to Dashboard
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</section>
+{% endblock %}
