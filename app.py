@@ -116,24 +116,71 @@ def logout():
 def dashboard():
     db = get_db()
     
-    # Fetch all expenses for current user
-    expenses = db.execute(
-        "SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC, id DESC",
-        (g.user["id"],)
-    ).fetchall()
+    # Capture optional dashboard filters from query arguments
+    category = request.args.get("category", "")
+    start_date = request.args.get("start_date", "")
+    end_date = request.args.get("end_date", "")
+    search = request.args.get("search", "")
     
-    # Calculate sum of all expenses
-    total_row = db.execute(
-        "SELECT SUM(amount) as total FROM expenses WHERE user_id = ?",
-        (g.user["id"],)
-    ).fetchone()
+    # 1. Fetch expenses dynamically applying parameterized filters
+    query = "SELECT * FROM expenses WHERE user_id = ?"
+    params = [g.user["id"]]
+    
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+    if start_date:
+        query += " AND date >= ?"
+        params.append(start_date)
+    if end_date:
+        query += " AND date <= ?"
+        params.append(end_date)
+    if search:
+        query += " AND description LIKE ?"
+        params.append(f"%{search}%")
+        
+    query += " ORDER BY date DESC, id DESC"
+    expenses = db.execute(query, params).fetchall()
+    
+    # 2. Calculate dynamic sum of filtered expenses
+    sum_query = "SELECT SUM(amount) as total FROM expenses WHERE user_id = ?"
+    sum_params = [g.user["id"]]
+    
+    if category:
+        sum_query += " AND category = ?"
+        sum_params.append(category)
+    if start_date:
+        sum_query += " AND date >= ?"
+        sum_params.append(start_date)
+    if end_date:
+        sum_query += " AND date <= ?"
+        sum_params.append(end_date)
+    if search:
+        sum_query += " AND description LIKE ?"
+        sum_params.append(f"%{search}%")
+        
+    total_row = db.execute(sum_query, sum_params).fetchone()
     total_spending = total_row["total"] if total_row["total"] is not None else 0.0
     
-    # Calculate spending grouped by category
-    category_rows = db.execute(
-        "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? GROUP BY category ORDER BY total DESC",
-        (g.user["id"],)
-    ).fetchall()
+    # 3. Calculate category totals dynamically for the filtered set
+    cat_query = "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ?"
+    cat_params = [g.user["id"]]
+    
+    if category:
+        cat_query += " AND category = ?"
+        cat_params.append(category)
+    if start_date:
+        cat_query += " AND date >= ?"
+        cat_params.append(start_date)
+    if end_date:
+        cat_query += " AND date <= ?"
+        cat_params.append(end_date)
+    if search:
+        cat_query += " AND description LIKE ?"
+        cat_params.append(f"%{search}%")
+        
+    cat_query += " GROUP BY category ORDER BY total DESC"
+    category_rows = db.execute(cat_query, cat_params).fetchall()
     
     category_totals = {row["category"]: row["total"] for row in category_rows}
     db.close()
@@ -142,7 +189,12 @@ def dashboard():
         "dashboard.html",
         expenses=expenses,
         total_spending=total_spending,
-        category_totals=category_totals
+        category_totals=category_totals,
+        # Return filter parameters to populate inputs in HTML
+        active_category=category,
+        active_start_date=start_date,
+        active_end_date=end_date,
+        active_search=search
     )
 
 
