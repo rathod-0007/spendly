@@ -126,6 +126,21 @@ def create_user(name, email, password):
     conn.close()
     return user_id
 
+def get_user_by_email(email):
+    """
+    Opens get_db(), runs a parameterised SELECT * FROM users WHERE email = ?,
+    and returns the corresponding user row or None if not found.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    row = cursor.execute("""
+        SELECT * FROM users WHERE email = ?;
+    """, (email,)).fetchone()
+    
+    conn.close()
+    return row
+
 if __name__ == "__main__":
     init_db()
     seed_db()

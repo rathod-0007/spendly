@@ -19,9 +19,10 @@
                 <span class="brand-name">Spendly</span>
             </a>
             <div class="nav-links">
-                {% if g.user %}
+                <!-- Conditional Navigation links based on user session state -->
+                {% if session.get('user_id') %}
                     <a href="{{ url_for('dashboard') }}">Dashboard</a>
-                    <a href="{{ url_for('profile') }}">Profile ({{ g.user['name'].split()[0] }})</a>
+                    <a href="{{ url_for('profile') }}">Profile ({{ g.user['name'].split()[0] if g.user else 'User' }})</a>
                     <a href="{{ url_for('logout') }}" class="nav-cta">Logout</a>
                 {% else %}
                     <a href="{{ url_for('login') }}">Sign in</a>
@@ -32,6 +33,17 @@
     </nav>
 
     <main class="main-content">
+        <!-- Global Flash Messages Display (for general pages) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages-container" style="max-width: var(--max-width); margin: 1.5rem auto 0; padding: 0 2rem;">
+                    {% for category, message in messages %}
+                        <div class="auth-{{ category }}" style="margin-bottom: 0.5rem; text-align: center;">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
     </main>
 

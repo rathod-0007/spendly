@@ -5,7 +5,7 @@ import functools
 from datetime import date
 
 # Import from your database structure
-from database.db import get_db, init_db, seed_db, create_user
+from database.db import get_db, init_db, seed_db, create_user, get_user_by_email
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key"
@@ -90,21 +90,20 @@ def login():
     if request.method == "POST":
         email = request.form.get("email")
         password = request.form.get("password")
-        error = None
 
-        db = get_db()
-        user = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-        db.close()
+        # Query the database for the user email using our helper
+        user = get_user_by_email(email)
 
+        # Verify password hash against database record
         if user is None or not check_password_hash(user["password_hash"], password):
-            error = "Incorrect email or password."
+            flash("Invalid email or password.", "error")
+            return render_template("login.html")
 
-        if error is None:
-            session.clear()
-            session["user_id"] = user["id"]
-            return redirect(url_for("dashboard"))
-
-        return render_template("login.html", error=error)
+        # On success, clear current session, assign user_id, flash success and redirect
+        session.clear()
+        session["user_id"] = user["id"]
+        flash("Welcome back!", "success")
+        return redirect(url_for("landing"))
 
     return render_template("login.html")
 
@@ -112,6 +111,7 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
+    flash("You have been logged out.", "success")
     return redirect(url_for("landing"))
 
 
