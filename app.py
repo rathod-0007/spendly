@@ -1,13 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, session, g, abort
+import sqlite3
+from flask import Flask, render_template, request, redirect, url_for, session, g, abort, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import functools
 from datetime import date
 
 # Import from your database structure
-from database.db import get_db, init_db, seed_db
+from database.db import get_db, init_db, seed_db, create_user
 
 app = Flask(__name__)
-app.secret_key = "spendly_secret_key_change_in_production"
+app.secret_key = "dev-secret-key"
 
 # ------------------------------------------------------------------ #
 # Authentication Helpers                                             #
@@ -51,29 +52,32 @@ def register():
         name = request.form.get("name")
         email = request.form.get("email")
         password = request.form.get("password")
-        error = None
+        confirm_password = request.form.get("confirm_password")
 
-        if not name or not email or not password:
-            error = "All fields are required."
-        elif len(password) < 8:
-            error = "Password must be at least 8 characters long."
+        # 1. Validation: Ensure all fields are non-empty
+        if not name or not email or not password or not confirm_password:
+            flash("All fields are required.", "error")
+            return render_template("register.html")
+            
+        # 2. Validation: Ensure password matches confirm password
+        if password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return render_template("register.html")
+            
+        # 3. Validation: Password length requirement
+        if len(password) < 8:
+            flash("Password must be at least 8 characters long.", "error")
+            return render_template("register.html")
 
-        if error is None:
-            db = get_db()
-            try:
-                hashed_pw = generate_password_hash(password)
-                db.execute(
-                    "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-                    (name, email, hashed_pw)
-                )
-                db.commit()
-                return redirect(url_for("login"))
-            except db.IntegrityError:
-                error = f"Email {email} is already registered."
-            finally:
-                db.close()
-
-        return render_template("register.html", error=error)
+        # 4. Attempt database insertion
+        try:
+            create_user(name, email, password)
+            flash("Registration successful! Please sign in.", "success")
+            return redirect(url_for("login"))
+        except sqlite3.IntegrityError:
+            # Catch duplicate email UNIQUE constraint violation
+            flash("Email already registered.", "error")
+            return render_template("register.html")
 
     return render_template("register.html")
 

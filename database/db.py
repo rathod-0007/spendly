@@ -21,23 +21,23 @@ def get_db():
 def init_db():
     """
     Creates the users and expenses tables safely.
-    Uses CREATE TABLE IF NOT EXISTS so it can be called repeatedly without errors.
+    Uses 'localtime' modifiers on default datetime queries to record local timezone.
     """
     conn = get_db()
     cursor = conn.cursor()
     
-    # Create Users table
+    # Create Users table with local timezone default
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now'))
+        created_at TEXT DEFAULT (datetime('now', 'localtime'))
     );
     """)
     
-    # Create Expenses table
+    # Create Expenses table with local timezone default
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +46,7 @@ def init_db():
         category TEXT NOT NULL,
         date TEXT NOT NULL,
         description TEXT,
-        created_at TEXT DEFAULT (datetime('now')),
+        created_at TEXT DEFAULT (datetime('now', 'localtime')),
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     );
     """)
@@ -102,6 +102,29 @@ def seed_db():
     
     conn.commit()
     conn.close()
+
+def create_user(name, email, password):
+    """
+    Hashes the password with generate_password_hash,
+    runs a parameterised INSERT into users,
+    commits and closes the connection,
+    and returns the cursor's lastrowid.
+    sqlite3.IntegrityError bubbles up naturally (caller handles it).
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    hashed_password = generate_password_hash(password)
+    
+    cursor.execute("""
+        INSERT INTO users (name, email, password_hash)
+        VALUES (?, ?, ?);
+    """, (name, email, hashed_password))
+    
+    user_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return user_id
 
 if __name__ == "__main__":
     init_db()
