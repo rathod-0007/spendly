@@ -47,7 +47,7 @@
     </div>
 </section>
 
-<!-- Scoped responsive container replacing the desktop-only features section -->
+<!-- Scoped responsive container matching clean dashboard layouts -->
 <div class="dashboard-grid">
     
     <!-- Left Column: Spending Breakdown Card -->
@@ -91,46 +91,6 @@
             <span class="mock-label">{{ expenses|length }} recorded</span>
         </div>
 
-        <!-- Filter and Search Form -->
-        <form method="GET" action="{{ url_for('dashboard') }}" style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; background: var(--paper); border: 1px solid var(--border-soft); padding: 1.25rem 1rem; border-radius: var(--radius-sm);">
-            
-            <!-- Category Filter -->
-            <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 0.25rem;">
-                <label for="category" class="mock-label" style="font-size: 0.65rem;">Category</label>
-                <select id="category" name="category" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem; font-family: var(--font-sans); background: var(--paper-card); height: 2.2rem; cursor: pointer;">
-                    <option value="">All Categories</option>
-                    {% set categories = ['Bills', 'Food', 'Health', 'Transport', 'Entertainment', 'Shopping', 'Other'] %}
-                    {% for cat in categories %}
-                        <option value="{{ cat }}" {{ 'selected' if active_category == cat else '' }}>{{ cat }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Start Date Filter -->
-            <div style="flex: 1; min-width: 130px; display: flex; flex-direction: column; gap: 0.25rem;">
-                <label for="start_date" class="mock-label" style="font-size: 0.65rem;">Start Date</label>
-                <input type="date" id="start_date" name="start_date" value="{{ active_start_date }}" style="width: 100%; padding: 0.45rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem; font-family: var(--font-sans); background: var(--paper-card); height: 2.2rem;">
-            </div>
-
-            <!-- End Date Filter -->
-            <div style="flex: 1; min-width: 130px; display: flex; flex-direction: column; gap: 0.25rem;">
-                <label for="end_date" class="mock-label" style="font-size: 0.65rem;">End Date</label>
-                <input type="date" id="end_date" name="end_date" value="{{ active_end_date }}" style="width: 100%; padding: 0.45rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem; font-family: var(--font-sans); background: var(--paper-card); height: 2.2rem;">
-            </div>
-
-            <!-- Text Search input -->
-            <div style="flex: 1.5; min-width: 160px; display: flex; flex-direction: column; gap: 0.25rem;">
-                <label for="search" class="mock-label" style="font-size: 0.65rem;">Search Notes</label>
-                <input type="text" id="search" name="search" value="{{ active_search }}" placeholder="e.g. rent, groceries" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem; font-family: var(--font-sans); background: var(--paper-card); height: 2.2rem;">
-            </div>
-
-            <!-- Action buttons container -->
-            <div style="flex: 1; min-width: 160px; display: flex; gap: 0.5rem; align-items: flex-end;">
-                <button type="submit" class="btn-primary" style="padding: 0; line-height: 2.2rem; font-size: 0.85rem; border-radius: var(--radius-sm); height: 2.2rem; flex: 1; border: none; cursor: pointer;">Filter</button>
-                <a href="{{ url_for('dashboard') }}" class="btn-ghost" style="padding: 0; line-height: 2.1rem; text-align: center; font-size: 0.85rem; border-radius: var(--radius-sm); height: 2.2rem; flex: 1; display: inline-block;">Reset</a>
-            </div>
-        </form>
-
         {% if expenses %}
             <div class="table-container">
                 <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: left;">
@@ -165,8 +125,8 @@
             </div>
         {% else %}
             <div style="text-align: center; padding: 3rem 1rem; color: var(--ink-muted);">
-                <p style="font-size: 1rem; margin-bottom: 1rem;">No transactions match your search filters.</p>
-                <a href="{{ url_for('dashboard') }}" class="btn-ghost" style="padding: 0.5rem 1rem;">Clear Filters</a>
+                <p style="font-size: 1rem; margin-bottom: 1rem;">You haven't logged any expenses yet.</p>
+                <a href="{{ url_for('add_expense') }}" class="btn-ghost" style="padding: 0.5rem 1rem;">Add your first expense</a>
             </div>
         {% endif %}
     </div>

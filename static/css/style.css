@@ -23,6 +23,15 @@
     --border-soft: #f2f2eb;   /* Softer border for inner elements */
     --danger: #dc2626;        /* Red for delete/errors */
     
+    /* Soft, professional category-specific progress bar colors */
+    --cat-1: #0f766e;        /* Deep teal */
+    --cat-2: #1e3a8a;        /* Deep blue */
+    --cat-3: #b45309;        /* Muted amber */
+    --cat-4: #4b5563;        /* Slate gray */
+    --cat-5: #065f46;        /* Forest green */
+    --cat-6: #6b21a8;        /* Muted purple */
+    --cat-7: #9a3412;        /* Rust orange */
+    
     /* Layout Constants */
     --max-width: 1100px;
     --radius-lg: 16px;
@@ -406,6 +415,16 @@ a {
     margin-bottom: 1.5rem;
 }
 
+.auth-success {
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: var(--accent);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+}
+
 .form-group {
     margin-bottom: 1.25rem;
 }
@@ -465,6 +484,120 @@ a {
     color: var(--accent);
     font-weight: 500;
     text-decoration: underline;
+}
+
+/* ------------------------------------------------------------------ */
+/* Profile Page Layout Styles                                         */
+/* ------------------------------------------------------------------ */
+.profile-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.profile-avatar {
+    background-color: var(--accent-light);
+    color: var(--accent);
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+}
+
+.stats-box {
+    background: var(--paper-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.01);
+}
+
+/* Profile details 2-column split grid (aligning with Screenshot 1) */
+.profile-details-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+@media (min-width: 900px) {
+    .profile-details-grid {
+        grid-template-columns: 2fr 1.1fr; /* 2/3 for transactions, 1/3 for category bars */
+    }
+}
+
+/* Category breakdown & Dynamic Badges Styling */
+.cat-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border-soft);
+}
+.cat-name {
+    width: 120px;
+    font-size: 0.875rem;
+    color: var(--ink-soft);
+}
+.cat-bar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--border-soft);
+    border-radius: 99px;
+    overflow: hidden;
+}
+.cat-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+}
+.cat-amount {
+    width: 80px;
+    text-align: right;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+/* Color Mapped Badges / Pills strictly via CSS classes (No inline styles) */
+.badge-bills { background-color: #fee2e2; color: #b91c1c; }         /* Soft Red */
+.badge-food { background-color: #dcfce7; color: #15803d; }          /* Soft Green */
+.badge-health { background-color: #ccfbf1; color: #0f766e; }        /* Soft Teal */
+.badge-transport { background-color: #e0f2fe; color: #0369a1; }     /* Soft Blue */
+.badge-entertainment { background-color: #fef3c7; color: #b45309; } /* Soft Amber */
+.badge-shopping { background-color: #fae8ff; color: #86198f; }      /* Soft Pink */
+.badge-other { background-color: #f3f4f6; color: #4b5563; }         /* Soft Gray */
+
+/* Responsive */
+@media (max-width: 600px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    .profile-card {
+        flex-direction: column;
+        text-align: center;
+    }
 }
 
 /* ------------------------------------------------------------------ */
