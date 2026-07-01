@@ -60,7 +60,7 @@ def main():
     # 2. Verify user exists
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM users WHERE id = ?;", (user_id,))
+    cursor.execute("SELECT id FROM users WHERE id = %s;", (user_id,))
     if cursor.fetchone() is None:
         print(f"No user found with id {user_id}.")
         conn.close()
@@ -95,14 +95,13 @@ def main():
     
     # Insert inside a single transaction
     try:
-        cursor.execute("BEGIN TRANSACTION;")
         for cat, amt, dt, desc in expenses_to_insert:
             cursor.execute("""
                 INSERT INTO expenses (user_id, category, amount, date, description)
-                VALUES (?, ?, ?, ?, ?);
+                VALUES (%s, %s, %s, %s, %s) RETURNING id;
             """, (user_id, cat, amt, dt, desc))
             inserted_records.append({
-                "id": cursor.lastrowid,
+                "id": cursor.fetchone()['id'],
                 "category": cat,
                 "amount": amt,
                 "date": dt,

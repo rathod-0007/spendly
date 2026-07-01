@@ -43,7 +43,7 @@ def seed_single_user():
     # Loop to ensure the email is globally unique in our database
     while True:
         name, email = generate_indian_user()
-        cursor.execute("SELECT id FROM users WHERE email = ?;", (email,))
+        cursor.execute("SELECT id FROM users WHERE email = %s;", (email,))
         if cursor.fetchone() is None:
             break
             
@@ -52,10 +52,10 @@ def seed_single_user():
     
     cursor.execute("""
         INSERT INTO users (name, email, password_hash, created_at)
-        VALUES (?, ?, ?, ?);
+        VALUES (%s, %s, %s, %s) RETURNING id;
     """, (name, email, hashed_password, created_at))
     
-    user_id = cursor.lastrowid
+    user_id = cursor.fetchone()['id']
     conn.commit()
     conn.close()
     

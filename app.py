@@ -1,10 +1,10 @@
-import sqlite3
+import psycopg2
 from flask import Flask, render_template, request, redirect, url_for, session, g, abort, flash, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 import functools
 from datetime import datetime, date
 
-# Import from your database structure
+# Import from database structure
 from database.db import get_db, init_db, seed_db, create_user, get_user_by_email
 
 app = Flask(__name__)
@@ -21,7 +21,9 @@ def load_logged_in_user():
         g.user = None
     else:
         db = get_db()
-        g.user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        g.user = cursor.fetchone()
         db.close()
 
 def login_required(view):
@@ -74,7 +76,7 @@ def register():
             create_user(name, email, password)
             flash("Registration successful! Please sign in.", "success")
             return redirect(url_for("login"))
-        except sqlite3.IntegrityError:
+        except psycopg2.IntegrityError:
             # Catch duplicate email UNIQUE constraint violation
             flash("Email already registered.", "error")
             return render_template("register.html")
@@ -119,27 +121,31 @@ def logout():
 @login_required
 def dashboard():
     db = get_db()
+    cursor = db.cursor()
     
     # Fetch all expenses for current user
-    expenses = db.execute(
-        "SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC, id DESC",
+    cursor.execute(
+        "SELECT * FROM expenses WHERE user_id = %s ORDER BY date DESC, id DESC",
         (g.user["id"],)
-    ).fetchall()
+    )
+    expenses = cursor.fetchall()
     
     # Calculate sum of all expenses
-    total_row = db.execute(
-        "SELECT SUM(amount) as total FROM expenses WHERE user_id = ?",
+    cursor.execute(
+        "SELECT SUM(amount) as total FROM expenses WHERE user_id = %s",
         (g.user["id"],)
-    ).fetchone()
-    total_spending = total_row["total"] if total_row["total"] is not None else 0.0
+    )
+    total_row = cursor.fetchone()
+    total_spending = float(total_row["total"]) if total_row and total_row["total"] is not None else 0.0
     
     # Calculate spending grouped by category
-    category_rows = db.execute(
-        "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? GROUP BY category ORDER BY total DESC",
+    cursor.execute(
+        "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = %s GROUP BY category ORDER BY total DESC",
         (g.user["id"],)
-    ).fetchall()
+    )
+    category_rows = cursor.fetchall()
+    category_totals = {row["category"]: float(row["total"]) for row in category_rows}
     
-    category_totals = {row["category"]: row["total"] for row in category_rows}
     db.close()
     
     return render_template(
@@ -181,9 +187,10 @@ def add_expense():
 
         if error is None:
             db = get_db()
-            db.execute("""
+            cursor = db.cursor()
+            cursor.execute("""
                 INSERT INTO expenses (user_id, category, amount, date, description)
-                VALUES (?, ?, ?, ?, ?);
+                VALUES (%s, %s, %s, %s, %s);
             """, (g.user["id"], category, float(amount), expense_date, description))
             db.commit()
             db.close()
@@ -198,11 +205,14 @@ def add_expense():
 @login_required
 def edit_expense(id):
     db = get_db()
+    cursor = db.cursor()
+    
     # Ensure the expense exists and belongs to the current user
-    expense = db.execute(
-        "SELECT * FROM expenses WHERE id = ? AND user_id = ?", 
+    cursor.execute(
+        "SELECT * FROM expenses WHERE id = %s AND user_id = %s", 
         (id, g.user["id"])
-    ).fetchone()
+    )
+    expense = cursor.fetchone()
 
     if expense is None:
         db.close()
@@ -219,10 +229,10 @@ def edit_expense(id):
             error = "Amount, Category, and Date are required."
 
         if error is None:
-            db.execute("""
+            cursor.execute("""
                 UPDATE expenses 
-                SET category = ?, amount = ?, date = ?, description = ?
-                WHERE id = ? AND user_id = ?;
+                SET category = %s, amount = %s, date = %s, description = %s
+                WHERE id = %s AND user_id = %s;
             """, (category, float(amount), expense_date, description, id, g.user["id"]))
             db.commit()
             db.close()
@@ -239,14 +249,17 @@ def edit_expense(id):
 @login_required
 def delete_expense(id):
     db = get_db()
+    cursor = db.cursor()
+    
     # Confirm security ownership before deletion
-    expense = db.execute(
-        "SELECT id FROM expenses WHERE id = ? AND user_id = ?", 
+    cursor.execute(
+        "SELECT id FROM expenses WHERE id = %s AND user_id = %s", 
         (id, g.user["id"])
-    ).fetchone()
+    )
+    expense = cursor.fetchone()
 
     if expense:
-        db.execute("DELETE FROM expenses WHERE id = ?", (id,))
+        cursor.execute("DELETE FROM expenses WHERE id = %s", (id,))
         db.commit()
         
     db.close()
@@ -263,7 +276,7 @@ def profile():
     """
     Renders the Profile page.
     If running under automated test coverage, supplies static mock blocks to satisfy test suites.
-    In browser, dynamically queries SQLite tables for the current logged-in user.
+    In browser, dynamically queries PostgreSQL tables for the current logged-in user.
     """
     # 1. Fallback for automated pytest execution to verify design compliance
     if current_app.config.get("TESTING"):
@@ -299,15 +312,20 @@ def profile():
 
     # 2. Dynamic DB Queries for live user viewing
     db = get_db()
+    cursor = db.cursor()
     
     # Initials extraction
     initials = "".join([part[0].upper() for part in g.user['name'].split()[:2]]) if g.user['name'] else "U"
     
     # Format member-since date safely
     try:
-        created_dt = datetime.strptime(g.user['created_at'], "%Y-%m-%d %H:%M:%S")
+        # PostgreSQL with timezone uses standard timestamp object directly or text formatting
+        if isinstance(g.user['created_at'], str):
+            created_dt = datetime.strptime(g.user['created_at'].split(".")[0], "%Y-%m-%d %H:%M:%S")
+        else:
+            created_dt = g.user['created_at']
         member_since = created_dt.strftime("%B %Y")
-    except (ValueError, TypeError):
+    except Exception:
         member_since = "June 2026"
         
     user_info = {
@@ -318,21 +336,23 @@ def profile():
     }
     
     # Total spent & Transaction count
-    stats_row = db.execute("""
+    cursor.execute("""
         SELECT COUNT(*) as count, SUM(amount) as total 
-        FROM expenses WHERE user_id = ?;
-    """, (g.user["id"],)).fetchone()
-    total_spent = stats_row["total"] if stats_row["total"] is not None else 0.0
-    transaction_count = stats_row["count"] if stats_row["count"] is not None else 0
+        FROM expenses WHERE user_id = %s;
+    """, (g.user["id"],))
+    stats_row = cursor.fetchone()
+    total_spent = float(stats_row["total"]) if stats_row and stats_row["total"] is not None else 0.0
+    transaction_count = stats_row["count"] if stats_row else 0
     
     # Top Category query
-    top_cat_row = db.execute("""
+    cursor.execute("""
         SELECT category, SUM(amount) as total 
         FROM expenses 
-        WHERE user_id = ? 
+        WHERE user_id = %s 
         GROUP BY category 
         ORDER BY total DESC LIMIT 1;
-    """, (g.user["id"],)).fetchone()
+    """, (g.user["id"],))
+    top_cat_row = cursor.fetchone()
     top_category = top_cat_row["category"] if top_cat_row else "None"
     
     stats = {
@@ -342,11 +362,12 @@ def profile():
     }
     
     # Fetch 3 most recent expenses
-    recent_transactions_rows = db.execute("""
+    cursor.execute("""
         SELECT * FROM expenses 
-        WHERE user_id = ? 
+        WHERE user_id = %s 
         ORDER BY date DESC, id DESC LIMIT 3;
-    """, (g.user["id"],)).fetchall()
+    """, (g.user["id"],))
+    recent_transactions_rows = cursor.fetchall()
     
     recent_transactions = []
     for row in recent_transactions_rows:
@@ -354,24 +375,25 @@ def profile():
             "date": row["date"],
             "category": row["category"],
             "description": row["description"] or "-",
-            "amount": row["amount"]
+            "amount": float(row["amount"])
         })
         
     # Categories Breakdown & Percentages
-    category_rows = db.execute("""
+    cursor.execute("""
         SELECT category, SUM(amount) as total 
         FROM expenses 
-        WHERE user_id = ? 
+        WHERE user_id = %s 
         GROUP BY category 
         ORDER BY total DESC;
-    """, (g.user["id"],)).fetchall()
+    """, (g.user["id"],))
+    category_rows = cursor.fetchall()
     
     category_breakdown = []
     for row in category_rows:
-        percentage = int((row["total"] / total_spent * 100)) if total_spent > 0 else 0
+        percentage = int((float(row["total"]) / total_spent * 100)) if total_spent > 0 else 0
         category_breakdown.append({
             "category": row["category"],
-            "amount": row["total"],
+            "amount": float(row["total"]),
             "percentage": percentage
         })
         

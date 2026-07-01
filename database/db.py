@@ -1,53 +1,50 @@
 import os
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from werkzeug.security import generate_password_hash
 
 def get_db():
     """
-    Opens a connection to spendly.db at the project root using os.path
-    to resolve the path relative to this database/db.py file.
-    Sets row_factory and enables foreign key constraints.
+    Opens a connection to the PostgreSQL database.
+    Railway automatically provides the DATABASE_URL environment variable.
     """
-    db_dir = os.path.dirname(os.path.abspath(__file__))
-    database_path = os.path.normpath(os.path.join(db_dir, "..", "spendly.db"))
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        # Local development fallback connection string
+        database_url = "postgresql://postgres:postgres@localhost:5432/spendly"
     
-    conn = sqlite3.connect(database_path)
-    conn.row_factory = sqlite3.Row
-    # Enable foreign keys support in SQLite
-    conn.execute("PRAGMA foreign_keys = ON;")
+    conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
     return conn
 
 def init_db():
     """
-    Creates the users and expenses tables safely.
-    Uses 'localtime' modifiers on default datetime queries to record local timezone.
+    Creates the users and expenses tables safely using PostgreSQL syntax.
     """
     conn = get_db()
     cursor = conn.cursor()
     
-    # Create Users table with local timezone default
+    # Create Users table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now', 'localtime'))
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
     """)
     
-    # Create Expenses table with local timezone default
+    # Create Expenses table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS expenses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        amount REAL NOT NULL,
-        category TEXT NOT NULL,
-        date TEXT NOT NULL,
-        description TEXT,
-        created_at TEXT DEFAULT (datetime('now', 'localtime')),
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        amount NUMERIC(12, 2) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        date VARCHAR(100) NOT NULL,
+        description VARCHAR(500),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
     """)
     
@@ -63,8 +60,8 @@ def seed_db():
     cursor = conn.cursor()
     
     # Check if the users table already contains data to prevent duplication
-    cursor.execute("SELECT COUNT(*) FROM users;")
-    user_count = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) as count FROM users;")
+    user_count = cursor.fetchone()['count']
     
     if user_count > 0:
         conn.close()
@@ -74,16 +71,15 @@ def seed_db():
     hashed_password = generate_password_hash("demo123")
     cursor.execute("""
         INSERT INTO users (name, email, password_hash) 
-        VALUES (?, ?, ?);
+        VALUES (%s, %s, %s) RETURNING id;
     """, ("Demo User", "demo@spendly.com", hashed_password))
     
-    user_id = cursor.lastrowid
+    user_id = cursor.fetchone()['id']
     
     # Get current year and month dynamically (YYYY-MM) for seeding inside the current month
     current_year_month = datetime.now().strftime("%Y-%m")
     
-    # 8 sample expenses covering all categories exactly as specified:
-    # Food, Transport, Bills, Health, Entertainment, Shopping, Other
+    # 8 sample expenses covering all categories:
     sample_expenses = [
         (user_id, "Bills", 4500.0, f"{current_year_month}-01", "Monthly electricity bill"),
         (user_id, "Food", 3200.0, f"{current_year_month}-03", "Weekly grocery provisions"),
@@ -97,7 +93,7 @@ def seed_db():
     
     cursor.executemany("""
         INSERT INTO expenses (user_id, category, amount, date, description)
-        VALUES (?, ?, ?, ?, ?);
+        VALUES (%s, %s, %s, %s, %s);
     """, sample_expenses)
     
     conn.commit()
@@ -108,8 +104,7 @@ def create_user(name, email, password):
     Hashes the password with generate_password_hash,
     runs a parameterised INSERT into users,
     commits and closes the connection,
-    and returns the cursor's lastrowid.
-    sqlite3.IntegrityError bubbles up naturally (caller handles it).
+    and returns the last inserted id.
     """
     conn = get_db()
     cursor = conn.cursor()
@@ -118,25 +113,26 @@ def create_user(name, email, password):
     
     cursor.execute("""
         INSERT INTO users (name, email, password_hash)
-        VALUES (?, ?, ?);
+        VALUES (%s, %s, %s) RETURNING id;
     """, (name, email, hashed_password))
     
-    user_id = cursor.lastrowid
+    user_id = cursor.fetchone()['id']
     conn.commit()
     conn.close()
     return user_id
 
 def get_user_by_email(email):
     """
-    Opens get_db(), runs a parameterised SELECT * FROM users WHERE email = ?,
+    Opens get_db(), runs a parameterised SELECT * FROM users WHERE email = %s,
     and returns the corresponding user row or None if not found.
     """
     conn = get_db()
     cursor = conn.cursor()
     
-    row = cursor.execute("""
-        SELECT * FROM users WHERE email = ?;
-    """, (email,)).fetchone()
+    cursor.execute("""
+        SELECT * FROM users WHERE email = %s;
+    """, (email,))
+    row = cursor.fetchone()
     
     conn.close()
     return row
