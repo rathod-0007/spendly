@@ -388,9 +388,12 @@ def profile():
 # ------------------------------------------------------------------ #
 # Application Context Startup Block                                  #
 # ------------------------------------------------------------------ #
+import os
 with app.app_context():
     init_db()
     seed_db()
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    # Bind to 0.0.0.0 and use the PORT environment variable if available (default to 5001)
+    port = int(os.environ.get("PORT", 5001))
+    app.run(host="0.0.0.0", port=port, debug=False)
