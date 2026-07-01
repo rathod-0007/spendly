@@ -7,9 +7,8 @@ from werkzeug.security import generate_password_hash
 
 def get_db():
     """
-    Opens a connection to PostgreSQL.
-    Automatically detects if running on Railway (using DATABASE_URL) 
-    or locally (using explicit parameters).
+    Opens a connection to PostgreSQL and configures the session 
+    to use Indian Standard Time (IST).
     """
     database_url = os.environ.get("DATABASE_URL")
     
@@ -18,7 +17,6 @@ def get_db():
         conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
     else:
         # LOCAL DEVELOPMENT (Windows 11)
-        # Using parameter keywords directly prevents errors caused by '@' in your password
         conn = psycopg2.connect(
             database="spendly",
             user="postgres",
@@ -27,6 +25,13 @@ def get_db():
             port="5432",
             cursor_factory=RealDictCursor
         )
+    
+    # Securely set the database session timezone to Indian Standard Time (IST)
+    cursor = conn.cursor()
+    cursor.execute("SET TIMEZONE='Asia/Kolkata';")
+    cursor.close()
+    conn.commit()
+    
     return conn
 
 def init_db():
