@@ -1,3 +1,4 @@
+# database/db.py
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -6,15 +7,26 @@ from werkzeug.security import generate_password_hash
 
 def get_db():
     """
-    Opens a connection to the PostgreSQL database.
-    Railway automatically provides the DATABASE_URL environment variable.
+    Opens a connection to PostgreSQL.
+    Automatically detects if running on Railway (using DATABASE_URL) 
+    or locally (using explicit parameters).
     """
     database_url = os.environ.get("DATABASE_URL")
-    if not database_url:
-        # Local development fallback connection string
-        database_url = "postgresql://postgres:postgres@localhost:5432/spendly"
     
-    conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+    if database_url:
+        # PRODUCTION (Railway)
+        conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+    else:
+        # LOCAL DEVELOPMENT (Windows 11)
+        # Using parameter keywords directly prevents errors caused by '@' in your password
+        conn = psycopg2.connect(
+            database="spendly",
+            user="postgres",
+            password="Icon@123",
+            host="localhost",
+            port="5432",
+            cursor_factory=RealDictCursor
+        )
     return conn
 
 def init_db():
@@ -74,7 +86,7 @@ def seed_db():
         VALUES (%s, %s, %s) RETURNING id;
     """, ("Demo User", "demo@spendly.com", hashed_password))
     
-    user_id = cursor.fetchone()['id']
+    user_id = cursor.fetchone()['id']  # type: ignore
     
     # Get current year and month dynamically (YYYY-MM) for seeding inside the current month
     current_year_month = datetime.now().strftime("%Y-%m")
@@ -116,7 +128,7 @@ def create_user(name, email, password):
         VALUES (%s, %s, %s) RETURNING id;
     """, (name, email, hashed_password))
     
-    user_id = cursor.fetchone()['id']
+    user_id = cursor.fetchone()['id']  # type: ignore
     conn.commit()
     conn.close()
     return user_id
